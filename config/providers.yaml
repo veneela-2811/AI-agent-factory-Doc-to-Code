@@ -1,0 +1,182 @@
+# Adaptive Multi-LLM Router Provider & Capability Registry Configuration
+
+providers:
+  openai:
+    enabled: true
+    adapter: openai
+    description: "OpenAI Target & High-Capability Backbone"
+    env_key: "OPENAI_API_KEY"
+    models:
+      - id: "gpt-5.5"
+        name: "GPT-5.5"
+        is_target: true
+        is_free: false
+        context_window: 200000
+        reasoning_tier: "high"
+        coding_tier: "expert"
+        structured_output: true
+        supports_search: true
+        cost_per_1k_input_tokens: 0.005
+        cost_per_1k_output_tokens: 0.015
+
+      - id: "gpt-5.4"
+        name: "GPT-5.4"
+        is_target: true
+        is_free: false
+        context_window: 128000
+        reasoning_tier: "high"
+        coding_tier: "expert"
+        structured_output: true
+        supports_search: true
+        cost_per_1k_input_tokens: 0.0025
+        cost_per_1k_output_tokens: 0.010
+
+      - id: "gpt-4o-mini"
+        name: "GPT-4o Mini"
+        is_target: false
+        is_free: false
+        context_window: 128000
+        reasoning_tier: "medium"
+        coding_tier: "medium"
+        structured_output: true
+        supports_search: true
+        cost_per_1k_input_tokens: 0.00015
+        cost_per_1k_output_tokens: 0.00060
+
+  gemini:
+    enabled: true
+    adapter: gemini
+    description: "Google Gemini Free-Tier & High-Speed Models"
+    env_key: "GEMINI_API_KEY"
+    models:
+      - id: "gemini-2.5-flash"
+        name: "Gemini 2.5 Flash"
+        is_target: true
+        is_free: true
+        context_window: 1000000
+        reasoning_tier: "high"
+        coding_tier: "expert"
+        structured_output: true
+        supports_search: true
+        cost_per_1k_input_tokens: 0.0
+        cost_per_1k_output_tokens: 0.0
+
+      - id: "gemini-2.5-pro"
+        name: "Gemini 2.5 Pro"
+        is_target: true
+        is_free: true
+        context_window: 1000000
+        reasoning_tier: "high"
+        coding_tier: "expert"
+        structured_output: true
+        supports_search: true
+        cost_per_1k_input_tokens: 0.0
+        cost_per_1k_output_tokens: 0.0
+
+  groq:
+    enabled: true
+    adapter: groq
+    description: "Groq High-Speed Inference"
+    env_key: "GROQ_API_KEY"
+    models:
+      - id: "llama-3.3-70b-versatile"
+        name: "Llama 3.3 70B Versatile"
+        is_target: false
+        is_free: true
+        context_window: 128000
+        reasoning_tier: "high"
+        coding_tier: "expert"
+        structured_output: true
+        supports_search: false
+        cost_per_1k_input_tokens: 0.0
+        cost_per_1k_output_tokens: 0.0
+
+      - id: "llama-3.1-8b-instant"
+        name: "Llama 3.1 8B Instant"
+        is_target: false
+        is_free: true
+        context_window: 128000
+        reasoning_tier: "low"
+        coding_tier: "basic"
+        structured_output: true
+        supports_search: false
+        cost_per_1k_input_tokens: 0.0
+        cost_per_1k_output_tokens: 0.0
+
+  openrouter:
+    enabled: true
+    adapter: openrouter
+    description: "OpenRouter Multi-Model Gateway"
+    env_key: "OPENROUTER_API_KEY"
+    models:
+      - id: "meta-llama/llama-3.3-70b-instruct:free"
+        name: "Llama 3.3 70B (Free)"
+        is_target: false
+        is_free: true
+        context_window: 131072
+        reasoning_tier: "high"
+        coding_tier: "expert"
+        structured_output: true
+        supports_search: false
+        cost_per_1k_input_tokens: 0.0
+        cost_per_1k_output_tokens: 0.0
+
+  ollama:
+    enabled: true
+    adapter: ollama
+    description: "Local Offline Ollama Models"
+    env_key: "OLLAMA_BASE_URL"
+    models:
+      - id: "qwen2.5-coder:7b"
+        name: "Qwen 2.5 Coder 7B (Local)"
+        is_target: false
+        is_free: true
+        context_window: 32768
+        reasoning_tier: "medium"
+        coding_tier: "expert"
+        structured_output: true
+        supports_search: false
+        cost_per_1k_input_tokens: 0.0
+        cost_per_1k_output_tokens: 0.0
+
+      - id: "llama3.1:8b"
+        name: "Llama 3.1 8B (Local)"
+        is_target: false
+        is_free: true
+        context_window: 32768
+        reasoning_tier: "medium"
+        coding_tier: "medium"
+        structured_output: true
+        supports_search: false
+        cost_per_1k_input_tokens: 0.0
+        cost_per_1k_output_tokens: 0.0
+
+  mock:
+    enabled: true
+    adapter: mock
+    description: "Hermetic Deterministic Mock Provider for Testing & Offline Dev"
+    env_key: ""
+    models:
+      - id: "mock-target-model"
+        name: "Mock GPT-5.5 Compatible Model"
+        is_target: true
+        is_free: true
+        context_window: 200000
+        reasoning_tier: "high"
+        coding_tier: "expert"
+        structured_output: true
+        supports_search: true
+        cost_per_1k_input_tokens: 0.0
+        cost_per_1k_output_tokens: 0.0
+
+      - id: "mock-fast-model"
+        name: "Mock Fast Simple Model"
+        is_target: false
+        is_free: true
+        context_window: 64000
+        reasoning_tier: "low"
+        coding_tier: "basic"
+        structured_output: true
+        supports_search: false
+        cost_per_1k_input_tokens: 0.0
+        cost_per_1k_output_tokens: 0.0

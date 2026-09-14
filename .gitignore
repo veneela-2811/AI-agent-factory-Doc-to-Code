@@ -1,0 +1,29 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local data & SQLite
+data/projects/*
+!data/projects/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
+chroma_data/
+
+# Environment secrets
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/

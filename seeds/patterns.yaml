@@ -1,0 +1,180 @@
+patterns:
+  - name: "ReAct"
+    intent: "Interleaves reasoning ('Thought') with action execution ('Action') against external tools and environment feedback ('Observation') to solve dynamic, multi-step problems."
+    structure: "A single autonomous agent executing a loop: (1) Reason about current goal and state, (2) Choose tool call or final answer, (3) Execute tool and observe result, (4) Repeat until completion."
+    when_to_use: "Tasks requiring dynamic discovery, external tool queries, database lookups, multi-step calculations, or interactive environments where the next step depends on previous tool results."
+    when_not_to_use: "Deterministic workflows with static steps, latency-critical real-time processing, or simple single-shot classification and summarization."
+    prerequisites:
+      - "Tool calling interface (ToolNode / Function Calling)"
+      - "Scratchpad memory for reasoning trace (Thought/Action/Observation history)"
+      - "Explicit loop termination condition and max iteration guardrails"
+    references:
+      - "Yao et al. (2022) - ReAct: Synergizing Reasoning and Acting in Language Models"
+      - "https://arxiv.org/abs/2210.03629"
+    tags:
+      - "single-agent"
+      - "tool-use"
+      - "reasoning"
+      - "dynamic-execution"
+
+  - name: "Reflection"
+    intent: "Improves generation quality through autonomous self-evaluation, critique against quality rubrics, and iterative refinement."
+    structure: "Two-node cycle: Generator agent produces initial draft -> Critic/Evaluator agent assesses quality, identifies gaps, and scores against rubrics -> If score < threshold, Generator revises draft using critique feedback -> Repeats until threshold met or max iterations reached."
+    when_to_use: "Code generation, requirement gap analysis, complex writing, translation, and structured data extraction where output can be objectively evaluated against defined criteria."
+    when_not_to_use: "Tasks with strictly binary answers (classification), tasks without clear evaluation criteria, or latency-sensitive streaming applications."
+    prerequisites:
+      - "Structured evaluation rubric or automated testing harness"
+      - "State graph cycle with iteration counter"
+      - "Distinct Generator and Critic prompt personas"
+    references:
+      - "Shinn et al. (2023) - Reflexion: Language Agents with Verbal Reinforcement Learning"
+      - "https://arxiv.org/abs/2303.11366"
+    tags:
+      - "evaluator-optimizer"
+      - "self-critique"
+      - "quality-control"
+      - "iterative-refinement"
+
+  - name: "Planner-Executor"
+    intent: "Separates high-level goal decomposition and strategic planning from granular task execution to handle complex multi-stage objectives."
+    structure: "Planner agent breaks user objective into an ordered, dependency-aware task list -> Executor agent(s) consume tasks sequentially or in parallel -> Replanner node periodically inspects state and updates remaining plan."
+    when_to_use: "Long-horizon coding workflows, multi-step system architectures, complex research synthesis, and workflows where forward planning prevents dead-ends and redundant tool calls."
+    when_not_to_use: "Simple single-intent requests, highly conversational chat, or exploratory tasks where the entire problem space is unknown upfront."
+    prerequisites:
+      - "Pydantic structured schema for plan steps and dependencies"
+      - "Execution state store maintaining task statuses (pending, in_progress, completed, failed)"
+      - "Replanning trigger conditional edge"
+    references:
+      - "LangGraph Plan-and-Execute Architecture"
+      - "Wang et al. (2023) - Plan-and-Solve Prompting"
+    tags:
+      - "plan-and-execute"
+      - "orchestration"
+      - "task-decomposition"
+      - "long-horizon"
+
+  - name: "Multi-Agent Debate"
+    intent: "Reduces hallucination, mitigates cognitive bias, and improves factual accuracy by having multiple agents with diverse personas critique and challenge each other across multiple rounds."
+    structure: "Multiple agent instances (with distinct personas/prompts) generate parallel initial responses -> Round-robin debate where each agent reads all peer arguments and refines its stance -> Moderator agent synthesizes the final consensus."
+    when_to_use: "High-stakes architectural decisions, complex ethical or legal analysis, adversarial vulnerability review, and verification of ambiguous multi-source claims."
+    when_not_to_use: "Straightforward code syntax generation, simple document lookup, or high-throughput low-latency APIs due to multi-agent token overhead."
+    prerequisites:
+      - "Multi-agent coordinator graph"
+      - "Debate history accumulator reducer in state"
+      - "Moderator/Consensus evaluation node"
+    references:
+      - "Du et al. (2023) - Improving Factuality and Reasoning in Language Models through Multiagent Debate"
+      - "https://arxiv.org/abs/2305.14325"
+    tags:
+      - "multi-agent"
+      - "debate"
+      - "consensus"
+      - "fact-checking"
+
+  - name: "Router"
+    intent: "Classifies incoming queries or tasks based on intent, complexity, or domain, and dispatches execution to the most suitable specialized agent, subgraph, or lightweight model."
+    structure: "Router/Classifier node analyzes input -> Conditional edges evaluate decision -> Execution branches to selected specialized sub-agent or fast-path handler."
+    when_to_use: "Systems supporting heterogeneous workloads, cost optimization (routing simple queries to free/small models and complex queries to frontier models), or domain dispatching."
+    when_not_to_use: "Single-purpose systems where every request follows the exact same workflow pipeline."
+    prerequisites:
+      - "Fast classification prompt or deterministic heuristic"
+      - "LangGraph conditional edges"
+      - "Clearly defined specialist subgraphs"
+    references:
+      - "LangGraph Routing Patterns"
+      - "Anthropic Building Effective Agents Guide (Routing Pattern)"
+    tags:
+      - "routing"
+      - "dispatch"
+      - "cost-optimization"
+      - "subgraphs"
+
+  - name: "RAG"
+    intent: "Retrieval-Augmented Generation: Grounds agent reasoning and generation in proprietary, project-specific, or real-time external knowledge retrieved dynamically from a vector store."
+    structure: "Query extraction / reformulation node -> Semantic vector search + metadata filtering over ChromaDB -> Retrieval re-ranking and context injection -> Synthesis agent generates grounded response with source citations."
+    when_to_use: "Answering questions over uploaded user documents (BRD/PRD/TRD), knowledge base pattern selection, documentation lookup, and grounding LLM answers to prevent hallucinations."
+    when_not_to_use: "Pure mathematical reasoning, coding purely against standard public libraries, or small context scenarios where entire files fit directly into the prompt context."
+    prerequisites:
+      - "Vector database (ChromaDB) with project-level isolation"
+      - "Text chunking and embedding pipeline"
+      - "Citation formatting and prompt delimiter envelopes"
+    references:
+      - "Lewis et al. (2020) - Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"
+      - "https://arxiv.org/abs/2005.11401"
+    tags:
+      - "retrieval"
+      - "vector-store"
+      - "grounding"
+      - "citation"
+
+  - name: "Tool-Use"
+    intent: "Empowers agents to interact with external environments, query databases, execute terminal commands, write files to disk, and call external REST APIs."
+    structure: "Agent inspects schema of available tools -> Agent emits structured tool call -> Execution harness (ToolNode) runs tool in sandbox -> Tool output/error returns to agent as ToolMessage -> Agent interprets result."
+    when_to_use: "Filesystem operations, code execution, web searches, database queries, and any operation that requires interaction outside LLM weights."
+    when_not_to_use: "Pure creative writing, brainstorming, or static reasoning without external dependencies."
+    prerequisites:
+      - "Tool registration decorators / LangChain BaseTool schemas"
+      - "ToolNode with robust error handling (returning errors to LLM rather than crashing)"
+      - "Security sandboxing and parameter validation"
+    references:
+      - "Schick et al. (2023) - Toolformer: Language Models Can Teach Themselves to Use Tools"
+      - "https://arxiv.org/abs/2302.04761"
+    tags:
+      - "tool-use"
+      - "function-calling"
+      - "filesystem"
+      - "api-integration"
+
+  - name: "Hierarchical Agents"
+    intent: "Organizes agents into a structured management hierarchy where a top-level Supervisor coordinates specialized Team Leads, who in turn orchestrate focused Worker agents."
+    structure: "Top-level Orchestrator assigns major milestones to specialized Sub-Supervisors (e.g., Research Lead, Architecture Lead, Dev Lead) -> Sub-Supervisors dispatch sub-tasks to worker agents -> Workers report results up the chain -> Orchestrator combines outputs."
+    when_to_use: "Large-scale software engineering projects, complex enterprise workflows, multi-domain system architecture design, and systems with deep modular specialization."
+    when_not_to_use: "Simple tasks, linear 2-step pipelines, or scenarios where direct flat agent communication is sufficient."
+    prerequisites:
+      - "Nested LangGraph subgraphs"
+      - "Structured inter-agent communication contracts and state isolation"
+      - "Supervisory aggregation reducers"
+    references:
+      - "Wu et al. (2023) - AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation"
+      - "LangGraph Multi-Agent Supervisor Pattern"
+    tags:
+      - "hierarchical"
+      - "supervisor"
+      - "orchestration"
+      - "subgraphs"
+
+  - name: "Critic-Refine (Reflexion)"
+    intent: "Advanced Evaluator-Optimizer pattern incorporating episodic memory of past attempts, failure reflections, and heuristic validation to achieve high-accuracy self-correcting problem solving."
+    structure: "Agent attempts task -> Evaluator runs deterministic checks/rubrics -> If test fails, Reflection agent analyzes root cause of failure -> Stores verbal reflection in state memory -> Agent retries with awareness of past mistakes."
+    when_to_use: "Automated test-driven code generation, solving competitive programming tasks, iterative bug fixing, and hard constraint satisfaction."
+    when_not_to_use: "Open-ended tasks without verifiable tests or feedback loops, or tasks where first-pass accuracy is sufficient."
+    prerequisites:
+      - "Deterministic validation harness (test runner, static analysis, or strict schema validator)"
+      - "Episodic reflection memory list in state"
+      - "Bounded retry counter with fallback strategy"
+    references:
+      - "Shinn et al. (2023) - Reflexion: Language Agents with Verbal Reinforcement Learning"
+      - "https://arxiv.org/abs/2303.11366"
+    tags:
+      - "reflexion"
+      - "evaluator-optimizer"
+      - "self-correction"
+      - "memory"
+
+  - name: "Map-Reduce / Parallel Workers"
+    intent: "High-throughput parallelization: partitions a large task into independent sub-tasks, dispatches them concurrently across worker agents, and aggregates results into a unified artifact."
+    structure: "Map node breaks input into N independent items -> N parallel worker nodes process items concurrently -> Reducer node gathers all worker results and synthesizes final combined output."
+    when_to_use: "Multi-source research (querying project docs, pattern KB, and web search in parallel), running parallel code reviewers (security, workflow, prompt), and batch document summarization."
+    when_not_to_use: "Sequential tasks with strict step-by-step dependencies where step N requires output from step N-1."
+    prerequisites:
+      - "LangGraph parallel branching (fan-out / fan-in)"
+      - "Accumulator reducer in graph state (e.g., `Annotated[list, operator.add]`)"
+      - "Independent, self-contained sub-task schemas"
+    references:
+      - "Dean & Ghemawat (2004) - MapReduce: Simplified Data Processing on Large Clusters"
+      - "LangGraph Parallel Execution Patterns"
+    tags:
+      - "parallel"
+      - "map-reduce"
+      - "scatter-gather"
+      - "concurrency"
