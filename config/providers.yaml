@@ -49,8 +49,8 @@ providers:
     description: "Google Gemini Free-Tier & High-Speed Models"
     env_key: "GEMINI_API_KEY"
     models:
-      - id: "gemini-2.5-flash"
-        name: "Gemini 2.5 Flash"
+      - id: "gemini-3.5-flash"
+        name: "Gemini 3.5 Flash"
         is_target: true
         is_free: true
         context_window: 1000000
@@ -61,8 +61,8 @@ providers:
         cost_per_1k_input_tokens: 0.0
         cost_per_1k_output_tokens: 0.0
 
-      - id: "gemini-2.5-pro"
-        name: "Gemini 2.5 Pro"
+      - id: "gemini-2.5-flash"
+        name: "Gemini 2.5 Flash"
         is_target: true
         is_free: true
         context_window: 1000000
@@ -127,12 +127,24 @@ providers:
     description: "Local Offline Ollama Models"
     env_key: "OLLAMA_BASE_URL"
     models:
+      - id: "llama3.2:latest"
+        name: "Llama 3.2 (Local)"
+        is_target: false
+        is_free: true
+        context_window: 131072
+        reasoning_tier: "high"
+        coding_tier: "expert"
+        structured_output: true
+        supports_search: false
+        cost_per_1k_input_tokens: 0.0
+        cost_per_1k_output_tokens: 0.0
+
       - id: "qwen2.5-coder:7b"
         name: "Qwen 2.5 Coder 7B (Local)"
         is_target: false
         is_free: true
         context_window: 32768
-        reasoning_tier: "medium"
+        reasoning_tier: "high"
         coding_tier: "expert"
         structured_output: true
         supports_search: false

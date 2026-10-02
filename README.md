@@ -292,3 +292,134 @@ curl -X GET http://127.0.0.1:8000/projects/<PROJECT_ID>/runs/<RUN_ID> \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
+---
+
+## Milestone 4: Workflow 2 (Combined Project & Code Planning Multi-Agent Graph)
+
+### Architecture & Capabilities
+- **Orchestrator-Worker / Supervisor Topology:** Top-level multi-agent graph coordinating specialist agents:
+  - **Complexity Router:** Directs projects to either a lightweight path ($< 3$ requirements) or a full heavyweight planning path ($\ge 3$ requirements).
+  - **Pattern Selector:** Queries ChromaDB Pattern Knowledge Base using requirements context, selects minimal best-fit agent patterns with rationales, and snapshots them into the DB run record (`snapshotted_patterns`).
+  - **Parallel Multi-Source Researcher:** Fans out into 3 parallel retrieval branches:
+    1. *Document RAG* (filtered by `project_id` in ChromaDB `documents`)
+    2. *Pattern KB RAG* (ChromaDB `patterns`)
+    3. *Web Search* (DuckDuckGo Search Adapter with grounded synthetic fallback)
+    - Synthesizes findings with verified citation tags: `[doc:section_id]`, `[kb:pattern_name]`, `[web:url]`, and `[llm]`.
+  - **Architect Agent:** Generates system architecture (`architecture.md` and `architecture.json`) detailing components, data flow, agent topology, tool inventory, deployment, and risks with citations.
+  - **Planner Agent:** Compiles architecture into an ordered, code-ready task DAG (`tasks.json`) with acceptance criteria, dependencies, pattern references, and requirement traceability IDs.
+  - **Critic Agent (Evaluator-Optimizer Loop):** Validates task plan against a 4-subscore rubric (Coverage, Ordering, Pattern Fidelity, Atomicity) with an $8.0/10.0$ passing threshold and 3-iteration cap.
+  - **Approval Gate (HITL over WebSocket):** Interactive `interrupt()` pausing for user review at `WS /projects/{project_id}/runs/{run_id}/hitl`.
+  - **Adaptive Re-Entry Loop:** On rejection with feedback, intelligently routes re-entry back to the `planner` or `architect` without restarting from scratch.
+- **First-Class SQLite `tasks` Table:** Stores task definitions and dependencies for downstream execution in Milestone 5.
+- **Task Mutation API with DAG Validation:** `PATCH /projects/{project_id}/runs/{run_id}/tasks/{task_id}` supports editing, splitting, and reordering with cycle and forward-dependency detection (Kahn's algorithm).
+- **Workflow Diagram Visualization:** Endpoints `GET /workflows/planning/mermaid` and `GET /workflows/planning/graph.png`.
+
+### 1-Click Verification Script
+```bash
+python scripts/verify_milestone_4.py
+```
+
+### Pytest Verification Suite
+```bash
+pytest tests/test_workflow_planning.py -v
+```
+
+### Step-by-Step API & WebSocket Walkthrough
+
+#### 1. Trigger Planning Workflow
+```bash
+curl -X POST http://127.0.0.1:8000/projects/<PROJECT_ID>/workflows/planning \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"requirements_run_id": "<REQUIREMENTS_RUN_ID>"}'
+```
+**Response (`202 Accepted`):**
+```json
+{
+  "run_id": "65508b35-3ec2-49eb-bf63-878bd9066a5d",
+  "project_id": "<PROJECT_ID>",
+  "workflow": "planning",
+  "status": "pending",
+  "location": "/projects/<PROJECT_ID>/runs/65508b35-3ec2-49eb-bf63-878bd9066a5d",
+  "events_url": "/projects/<PROJECT_ID>/runs/65508b35-3ec2-49eb-bf63-878bd9066a5d/events",
+  "hitl_ws_url": "/projects/<PROJECT_ID>/runs/65508b35-3ec2-49eb-bf63-878bd9066a5d/hitl"
+}
+```
+
+#### 2. Connect to WebSocket HITL Channel
+Open a WebSocket connection to:
+```
+ws://127.0.0.1:8000/projects/<PROJECT_ID>/runs/<RUN_ID>/hitl?token=<TOKEN>
+```
+**Server Pushes `approval_request` with Plan Artifacts & Critic Score:**
+```json
+{
+  "type": "approval_request",
+  "request_id": "req-uuid-789",
+  "artifact": {
+    "architecture_md_url": "/projects/<PROJECT_ID>/runs/<RUN_ID>/artifacts/architecture.md",
+    "architecture_json_url": "/projects/<PROJECT_ID>/runs/<RUN_ID>/artifacts/architecture.json",
+    "tasks_json_url": "/projects/<PROJECT_ID>/runs/<RUN_ID>/artifacts/tasks.json",
+    "research_json_url": "/projects/<PROJECT_ID>/runs/<RUN_ID>/artifacts/research.json",
+    "patterns_report_url": "/projects/<PROJECT_ID>/runs/<RUN_ID>/artifacts/patterns_report.json",
+    "task_count": 4,
+    "critic_score": 10.0,
+    "summary": "Generated plan with 4 code-ready tasks. Critic score: 10.0/10."
+  }
+}
+```
+
+#### 3. Inspect & Edit Tasks via REST Before Approving
+**Retrieve Task List:**
+```bash
+curl -X GET http://127.0.0.1:8000/projects/<PROJECT_ID>/runs/<RUN_ID>/tasks \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+**Split a Task into Subtasks:**
+```bash
+curl -X PATCH http://127.0.0.1:8000/projects/<PROJECT_ID>/runs/<RUN_ID>/tasks/TASK-02 \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "split",
+    "split_into": [
+      {
+        "title": "Database Schema & Entity Definitions",
+        "target_files": ["src/storage/schema.py"],
+        "dependencies": []
+      },
+      {
+        "title": "Database Migration & Seed Script",
+        "target_files": ["src/storage/seed.py"],
+        "dependencies": []
+      }
+    ]
+  }'
+```
+
+#### 4. Approve or Reject Plan over WebSocket
+**Approve Plan:**
+```json
+{
+  "type": "approval_response",
+  "request_id": "req-uuid-789",
+  "decision": "approve"
+}
+```
+
+**Reject Plan with Feedback (Triggers Adaptive Re-entry):**
+```json
+{
+  "type": "approval_response",
+  "request_id": "req-uuid-789",
+  "decision": "reject",
+  "feedback": "Split Task 2 and add unit tests to acceptance criteria."
+}
+```
+
+#### 5. Render Workflow Diagram
+```bash
+curl -X GET http://127.0.0.1:8000/workflows/planning/mermaid
+```
+

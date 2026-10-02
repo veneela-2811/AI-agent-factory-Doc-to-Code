@@ -28,6 +28,7 @@ class Project(Base):
     usages = relationship("Usage", back_populates="project", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="project", cascade="all, delete-orphan")
     events = relationship("RunEvent", back_populates="project", cascade="all, delete-orphan")
+    tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
 
 
 class Document(Base):
@@ -103,6 +104,7 @@ class Run(Base):
     project = relationship("Project", back_populates="runs")
     usages = relationship("Usage", back_populates="run", cascade="all, delete-orphan")
     events = relationship("RunEvent", back_populates="run", cascade="all, delete-orphan")
+    tasks = relationship("Task", back_populates="run", cascade="all, delete-orphan")
 
 
 class Usage(Base):
@@ -150,3 +152,26 @@ class AuditLog(Base):
     created_at = Column(DateTime, default=utc_now)
 
     project = relationship("Project", back_populates="audit_logs")
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    project_id = Column(String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    run_id = Column(String(36), ForeignKey("runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    task_id = Column(String(50), nullable=False)  # e.g., "TASK-01"
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    target_files = Column(JSON, nullable=False, default=list)
+    acceptance_criteria = Column(JSON, nullable=False, default=list)
+    dependencies = Column(JSON, nullable=False, default=list)
+    pattern_refs = Column(JSON, nullable=False, default=list)
+    requirement_refs = Column(JSON, nullable=False, default=list)
+    order_index = Column(Integer, nullable=False, default=0)
+    status = Column(String(50), nullable=False, default="pending")  # pending, in_progress, completed, failed
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    project = relationship("Project", back_populates="tasks")
+    run = relationship("Run", back_populates="tasks")

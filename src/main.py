@@ -16,6 +16,7 @@ from src.api.routes.document_routes import router as document_router
 from src.api.routes.pattern_routes import router as pattern_router
 from src.api.routes.workflow_routes import router as workflow_router
 from src.api.routes.ws_hitl import router as ws_hitl_router
+from src.api.routes.workflow_diagram_routes import router as workflow_diagram_router
 
 
 @asynccontextmanager
@@ -66,8 +67,9 @@ app.include_router(document_router)
 app.include_router(pattern_router)
 app.include_router(workflow_router)
 app.include_router(ws_hitl_router)
+app.include_router(workflow_diagram_router)
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("src.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)
+    uvicorn.run("src.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG, reload_dirs=["src"])

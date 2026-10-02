@@ -11,6 +11,8 @@ from src.storage.models import Project, Run
 from src.observability.events import event_hub
 from src.workflows.runner import workflow_runner
 from src.workflows.requirements.graph import build_requirements_graph
+from src.workflows.planning.graph import build_planning_graph
+from src.workflows.codegen.graph import build_codegen_graph
 
 logger = logging.getLogger("ws_hitl")
 router = APIRouter(tags=["Human-in-the-Loop"])
@@ -78,7 +80,12 @@ async def websocket_hitl_endpoint(
         db_path = str(settings.CHECKPOINT_DB_PATH.resolve())
         async with AsyncSqliteSaver.from_conn_string(db_path) as checkpointer:
             config = {"configurable": {"thread_id": f"{project_id}_{run_id}", "project_id": project_id, "run_id": run_id}}
-            compiled_graph = build_requirements_graph().compile(checkpointer=checkpointer)
+            if run_record.workflow_name == "codegen":
+                compiled_graph = build_codegen_graph().compile(checkpointer=checkpointer)
+            elif run_record.workflow_name == "planning":
+                compiled_graph = build_planning_graph().compile(checkpointer=checkpointer)
+            else:
+                compiled_graph = build_requirements_graph().compile(checkpointer=checkpointer)
             graph_state = await compiled_graph.aget_state(config)
             if graph_state.tasks:
                 for task in graph_state.tasks:
@@ -96,7 +103,7 @@ async def websocket_hitl_endpoint(
             async for event in event_hub.subscribe(project_id, run_id):
                 evt_type = event.get("event")
                 data = event.get("data", {})
-                if evt_type in ["clarification_requested", "approval_requested", "run_completed", "error"]:
+                if evt_type in ["clarification_requested", "approval_requested", "escalation_requested", "run_completed", "error"]:
                     if isinstance(data, dict) and "type" in data:
                         await websocket.send_text(json.dumps(data))
                     else:
@@ -148,6 +155,11 @@ async def websocket_hitl_endpoint(
                 feedback = msg.get("feedback", msg.get("payload", {}).get("feedback"))
                 await workflow_runner.resume_run(project_id, run_id, {"decision": decision, "feedback": feedback})
                 await websocket.send_text(json.dumps({"type": "ack", "status": "resumed_approval", "decision": decision}))
+            elif msg_type == "escalation_response":
+                decision = msg.get("decision", msg.get("payload", {}).get("decision", "approve"))
+                feedback = msg.get("feedback", msg.get("payload", {}).get("feedback"))
+                await workflow_runner.resume_run(project_id, run_id, {"decision": decision, "feedback": feedback})
+                await websocket.send_text(json.dumps({"type": "ack", "status": "resumed_escalation", "decision": decision}))
             else:
                 await websocket.send_text(json.dumps({"type": "unexpected_message", "received": msg_type}))
 

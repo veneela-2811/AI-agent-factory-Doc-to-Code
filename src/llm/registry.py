@@ -60,7 +60,7 @@ class ModelCapabilityRegistry:
             elif provider == "openrouter":
                 return bool(os.getenv("OPENROUTER_API_KEY") or settings.OPENROUTER_API_KEY)
             elif provider == "ollama":
-                return False
+                return bool(os.getenv("OLLAMA_BASE_URL") or settings.OLLAMA_BASE_URL)
             return False
 
         if mode == "development":

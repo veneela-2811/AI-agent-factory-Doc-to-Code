@@ -24,8 +24,9 @@ class FailingAdapter(BaseLLMAdapter):
 @pytest.mark.asyncio
 async def test_llm_router_cooldown_on_failure():
     router = AdaptiveLLMRouter()
-    # Inject failing adapter for mock
-    router.adapters["mock"] = FailingAdapter()
+    # Inject failing adapter for all providers to test cooldown hermetically
+    for k in list(router.adapters.keys()):
+        router.adapters[k] = FailingAdapter()
 
     req = LLMRequest(
         task_category=TaskCategory.SIMPLE,
@@ -33,10 +34,9 @@ async def test_llm_router_cooldown_on_failure():
         messages=[LLMMessage(role="user", content="Analyze document gaps")]
     )
     
-    # Should catch error, mark cooldown for mock
     try:
         await router.generate(req)
     except Exception:
         pass
 
-    assert "mock" in router.cooldowns
+    assert len(router.cooldowns) > 0

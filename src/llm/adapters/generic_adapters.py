@@ -1,7 +1,8 @@
 import os
 import json
 import time
-from typing import Dict, Any
+import asyncio
+from typing import Dict, Any, List
 import httpx
 from src.llm.base import BaseLLMAdapter
 from src.llm.schemas import LLMRequest, LLMResponse, ModelCapability
@@ -23,7 +24,6 @@ class GeminiAdapter(BaseLLMAdapter):
     async def generate(self, request: LLMRequest, model: ModelCapability) -> LLMResponse:
         start_time = time.time()
         api_key = settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY", "")
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model.id}:generateContent?key={api_key}"
         
         contents = []
         for m in request.messages:
@@ -36,30 +36,55 @@ class GeminiAdapter(BaseLLMAdapter):
                 "response_mime_type": "application/json"
             }
 
+        # Try primary model, with fallback to sibling flash models if 429/503 happens
+        candidate_models = [model.id]
+        if model.id == "gemini-2.5-flash":
+            candidate_models.append("gemini-3.5-flash")
+        elif model.id == "gemini-3.5-flash":
+            candidate_models.append("gemini-2.5-flash")
+
+        last_error = None
         async with httpx.AsyncClient(timeout=45.0) as client:
-            resp = await client.post(url, json=payload)
-            if resp.status_code != 200:
-                raise RuntimeError(f"Gemini API Error ({resp.status_code}): {resp.text}")
-            data = resp.json()
-            text = data["candidates"][0]["content"]["parts"][0]["text"]
-            structured_data = None
-            if request.response_schema:
-                try:
-                    clean = text.strip().removeprefix("```json").removesuffix("```").strip()
-                    structured_data = json.loads(clean)
-                except Exception:
-                    pass
-            latency = (time.time() - start_time) * 1000
-            return LLMResponse(
-                content=text,
-                structured_data=structured_data,
-                model_used=model.id,
-                provider_used="gemini",
-                tokens_in=len(str(contents)) // 4,
-                tokens_out=len(text) // 4,
-                cost_usd=0.0,
-                latency_ms=latency
-            )
+            for mid in candidate_models:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{mid}:generateContent?key={api_key}"
+                for attempt in range(2):
+                    try:
+                        resp = await client.post(url, json=payload)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            text = data["candidates"][0]["content"]["parts"][0]["text"]
+                            structured_data = None
+                            if request.response_schema:
+                                try:
+                                    clean = text.strip().removeprefix("```json").removesuffix("```").strip()
+                                    structured_data = json.loads(clean)
+                                except Exception:
+                                    pass
+                            latency = (time.time() - start_time) * 1000
+                            return LLMResponse(
+                                content=text,
+                                structured_data=structured_data,
+                                model_used=mid,
+                                provider_used="gemini",
+                                tokens_in=len(str(contents)) // 4,
+                                tokens_out=len(text) // 4,
+                                cost_usd=0.0,
+                                latency_ms=latency
+                            )
+                        elif resp.status_code in [429, 503] and attempt == 0:
+                            await asyncio.sleep(1.5)
+                            continue
+                        else:
+                            last_error = f"Gemini API Error ({resp.status_code}): {resp.text}"
+                            break
+                    except Exception as exc:
+                        last_error = str(exc)
+                        if attempt == 0:
+                            await asyncio.sleep(1.0)
+                            continue
+                        break
+
+        raise RuntimeError(last_error or "Gemini API generation failed")
 
 
 class GroqAdapter(BaseLLMAdapter):
@@ -168,14 +193,18 @@ class OpenRouterAdapter(BaseLLMAdapter):
 class OllamaAdapter(BaseLLMAdapter):
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
-        self.base_url = settings.OLLAMA_BASE_URL
+        raw_url = settings.OLLAMA_BASE_URL or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        url = raw_url.rstrip("/")
+        if url.endswith("/v1"):
+            url = url[:-3].rstrip("/")
+        self.base_url = url or "http://localhost:11434"
 
     def is_available(self) -> bool:
         return bool(self.base_url)
 
     async def health_check(self) -> bool:
         try:
-            async with httpx.AsyncClient(timeout=2.0) as client:
+            async with httpx.AsyncClient(timeout=3.0) as client:
                 resp = await client.get(f"{self.base_url}/api/tags")
                 return resp.status_code == 200
         except Exception:
@@ -192,7 +221,7 @@ class OllamaAdapter(BaseLLMAdapter):
         if request.response_schema:
             payload["format"] = "json"
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             resp = await client.post(f"{self.base_url}/api/chat", json=payload)
             if resp.status_code != 200:
                 raise RuntimeError(f"Ollama API Error ({resp.status_code}): {resp.text}")
@@ -201,7 +230,8 @@ class OllamaAdapter(BaseLLMAdapter):
             structured_data = None
             if request.response_schema:
                 try:
-                    structured_data = json.loads(content)
+                    clean = content.strip().removeprefix("```json").removesuffix("```").strip()
+                    structured_data = json.loads(clean)
                 except Exception:
                     pass
             latency = (time.time() - start_time) * 1000

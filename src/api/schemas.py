@@ -182,3 +182,17 @@ class HealthCheckResponse(BaseModel):
     sqlite_healthy: bool
     chromadb_healthy: bool
     filestore_healthy: bool
+
+
+class CodegenTriggerRequest(BaseModel):
+    planning_run_id: Optional[str] = Field(
+        default=None,
+        description="Optional planning run ID; defaults to latest completed planning run",
+        json_schema_extra={"example": "0b96febe-3930-42ac-a93e-39beb77917f3"}
+    )
+    tasks: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description="Optional list of tasks to execute; if omitted or empty, all approved tasks from the planning run are executed",
+        json_schema_extra={"example": None}
+    )
+
