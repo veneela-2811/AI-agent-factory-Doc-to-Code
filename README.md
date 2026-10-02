@@ -61,3 +61,6 @@ pip install -r requirements.txt
 .\.venv\Scripts\uvicorn.exe src.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 Interactive Swagger documentation is available at: **http://127.0.0.1:8000/docs**
+
+---
+
