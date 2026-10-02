@@ -8,38 +8,237 @@ Powered by an **Adaptive Multi-LLM Routing Engine** that decouples business logi
 
 ## Architecture Overview
 
-```
-[Business Documents] (PDF, DOCX, XLSX, PPTX, MD, TXT)
-       │
-       ▼
-┌────────────────────────────────────────────────────────┐
-│ Document Ingestion & Parsers                           │
-│  - Heading-Aware Structured Section Extraction         │
-│  - Project-Isolated Vector Embeddings (ChromaDB)       │
-└──────────────────────────┬─────────────────────────────┘
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│ Pattern Knowledge Base (Global Curated Library)        │
-│  - 10 Canonical Patterns Seeded on Startup             │
-│  - Semantic Vector Search + Similarity Scores          │
-└──────────────────────────┬─────────────────────────────┘
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│ Adaptive Multi-LLM Router                              │
-│  - Task Capability Classifier                          │
-│  - Provider Registry (OpenAI, Gemini, Groq, Ollama)   │
-│  - Capability-Aware Fallback & Cooldown Engine         │
-└──────────────────────────┬─────────────────────────────┘
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│ 3 Autonomous Agentic Workflows                         │
-│  1. Requirements Gathering (Reflection + HITL WS)      │
-│  2. Combined Planning (RAG + Research + Critic Loop)   │
-│  3. Code Generation (Dynamic Subgraphs + Reviewers)    │
-└────────────────────────────────────────────────────────┘
-```
+The system consists of three sequential LangGraph workflows:
+
+1. Requirements Gathering
+2. Project & Code Planning
+3. Code Generation
+
+Each workflow is checkpointed using SQLite and supports Human-in-the-Loop (HITL) through WebSocket.
 
 ---
+
+## Workflow 1: Requirements Gathering
+
+```text
+                    ┌──────────────────────┐
+                    │  Business / Technical│
+                    │      Documents       │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │  Document Processing  │
+                    │ PDF / DOCX / PPTX /   │
+                    │ XLSX / MD / TXT       │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   Content Extraction  │
+                    │   + Chunking + RAG    │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │ Requirements Analyzer│
+                    │  & Gap Identification │
+                    └──────────┬───────────┘
+                               │
+                    ┌──────────┴──────────┐
+                    │                     │
+              Gaps Found?              No Gaps
+                    │                     │
+                   Yes                    │
+                    ▼                     │
+          ┌────────────────────┐          │
+          │  HITL Clarification│          │
+          │    via WebSocket   │          │
+          └──────────┬─────────┘          │
+                     │                    │
+                     └────────┬───────────┘
+                              ▼
+                   ┌──────────────────────┐
+                   │ Canonical Requirements│
+                   │     JSON + Markdown   │
+                   └──────────┬───────────┘
+                              │
+                              ▼
+                   ┌──────────────────────┐
+                   │   Human Approval     │
+                   │      via WebSocket   │
+                   └──────────┬───────────┘
+                              │
+                              ▼
+                   Requirements Approved
+
+---
+
+
+## Workflow 2: Project & Code Planning
+
+                 Approved Requirements
+                          │
+                          ▼
+                ┌─────────────────────┐
+                │   Pattern Selector  │
+                │ Global Pattern KB   │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │   Research Phase    │
+                │                     │
+                │ ┌─────────────────┐ │
+                │ │ Project Docs RAG │ │
+                │ ├─────────────────┤ │
+                │ │ Pattern KB RAG   │ │
+                │ ├─────────────────┤ │
+                │ │ Web Search       │ │
+                │ └─────────────────┘ │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │  Architecture Agent │
+                │  Architecture JSON  │
+                │     + Markdown      │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │   Task Planner      │
+                │                     │
+                │ Ordered Code Tasks  │
+                │ Dependencies        │
+                │ Target Files        │
+                │ Acceptance Criteria │
+                │ Pattern References  │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │   Critic / Validator│
+                │                     │
+                │ Coverage            │
+                │ Ordering            │
+                │ Pattern Fidelity    │
+                │ Task Atomicity      │
+                └──────────┬──────────┘
+                           │
+                     Valid Plan?
+                    ┌──────┴──────┐
+                   No             Yes
+                   │               │
+                   ▼               ▼
+             Revise Plan      HITL Approval
+                   │           via WebSocket
+                   └──────┐        │
+                          │        ▼
+                          └──► Approved Plan
+
+## Workflow 2 Research
+
+                    Research Request
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+        Project Docs    Pattern KB    Web Search
+            RAG             RAG           │
+              │              │            │
+              └──────────────┼────────────┘
+                             ▼
+                    ┌─────────────────┐
+                    │ Research Results│
+                    │ + Citations     │
+                    └─────────────────┘
+
+## Workflow 3: Code Generation
+
+                    Approved Task Plan
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │ Developer Orchestrator│
+                └──────────┬──────────┘
+                           │
+                           ▼
+                 Execute Tasks Sequentially
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │  Current Task       │
+                │                     │
+                │ Read dependency     │
+                │ files + workspace   │
+                │ context             │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │ Dynamic Task Graph  │
+                │ based on patterns   │
+                └──────────┬──────────┘
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │   Developer Agent   │
+                │   Generate Code     │
+                └──────────┬──────────┘
+                           │
+                           ▼
+              ┌───────────────────────────┐
+              │   Parallel Reviewers      │
+              │                           │
+              │ ┌───────────────────────┐ │
+              │ │ Workflow Reviewer     │ │
+              │ ├───────────────────────┤ │
+              │ │ Prompt Reviewer       │ │
+              │ ├───────────────────────┤ │
+              │ │ Security Reviewer     │ │
+              │ └───────────────────────┘ │
+              └─────────────┬─────────────┘
+                            │
+                            ▼
+                   ┌──────────────────┐
+                   │ Review Aggregator│
+                   └────────┬─────────┘
+                            │
+                     Pass or Fail?
+                    ┌───────┴────────┐
+                   Pass              Fail
+                    │                  │
+                    │                  ▼
+                    │           Retry with Feedback
+                    │                  │
+                    │             Retry Limit?
+                    │             ┌─────┴─────┐
+                    │            No           Yes
+                    │             │             │
+                    │             └──► Review   ▼
+                    │                    HITL Escalation
+                    │
+                    ▼
+             Execute Next Task
+                    │
+                    ▼
+              All Tasks Done?
+                    │
+                    ▼
+             ┌──────────────────┐
+             │ Final Validation │
+             └────────┬─────────┘
+                      │
+                      ▼
+               Human Approval
+                via WebSocket
+                      │
+                      ▼
+             ┌──────────────────┐
+             │  ZIP Code Bundle │
+             │ + MANIFEST.json  │
+             └──────────────────┘
+
 
 ## Quickstart Guide
 
