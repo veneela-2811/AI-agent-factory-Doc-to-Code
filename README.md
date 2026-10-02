@@ -1,3 +1,6 @@
+Yes. The issue was that the Markdown code fences inside the outer code block were breaking it. For a single README code block, the inner diagrams should **not** use their own triple backticks.
+
+```md
 # AI Agent Factory v2: Document-Driven, Pattern-Aware Code Generator
 
 A production-grade, backend-only AI Agent Factory that ingests business and technical specifications (BRD / PRD / TRD in PDF, DOCX, PPTX, XLSX, MD, TXT) and autonomously drives three sequential agentic workflows to produce a working, pattern-aware codebase.
@@ -20,7 +23,6 @@ Each workflow is checkpointed using SQLite and supports Human-in-the-Loop (HITL)
 
 ## Workflow 1: Requirements Gathering
 
-```text
                     ┌──────────────────────┐
                     │  Business / Technical│
                     │      Documents       │
@@ -28,21 +30,21 @@ Each workflow is checkpointed using SQLite and supports Human-in-the-Loop (HITL)
                                │
                                ▼
                     ┌──────────────────────┐
-                    │  Document Processing  │
+                    │   Document Processing │
                     │ PDF / DOCX / PPTX /   │
                     │ XLSX / MD / TXT       │
                     └──────────┬───────────┘
                                │
                                ▼
                     ┌──────────────────────┐
-                    │   Content Extraction  │
-                    │   + Chunking + RAG    │
+                    │  Content Extraction  │
+                    │   + Chunking + RAG   │
                     └──────────┬───────────┘
                                │
                                ▼
                     ┌──────────────────────┐
                     │ Requirements Analyzer│
-                    │  & Gap Identification │
+                    │  & Gap Identification│
                     └──────────┬───────────┘
                                │
                     ┌──────────┴──────────┐
@@ -52,8 +54,8 @@ Each workflow is checkpointed using SQLite and supports Human-in-the-Loop (HITL)
                    Yes                    │
                     ▼                     │
           ┌────────────────────┐          │
-          │  HITL Clarification│          │
-          │    via WebSocket   │          │
+          │ HITL Clarification │          │
+          │   via WebSocket    │          │
           └──────────┬─────────┘          │
                      │                    │
                      └────────┬───────────┘
@@ -73,7 +75,6 @@ Each workflow is checkpointed using SQLite and supports Human-in-the-Loop (HITL)
                    Requirements Approved
 
 ---
-
 
 ## Workflow 2: Project & Code Planning
 
@@ -118,7 +119,7 @@ Each workflow is checkpointed using SQLite and supports Human-in-the-Loop (HITL)
                            │
                            ▼
                 ┌─────────────────────┐
-                │   Critic / Validator│
+                │ Critic / Validator  │
                 │                     │
                 │ Coverage            │
                 │ Ordering            │
@@ -137,6 +138,8 @@ Each workflow is checkpointed using SQLite and supports Human-in-the-Loop (HITL)
                           │        ▼
                           └──► Approved Plan
 
+---
+
 ## Workflow 2 Research
 
                     Research Request
@@ -153,6 +156,8 @@ Each workflow is checkpointed using SQLite and supports Human-in-the-Loop (HITL)
                     │ + Citations     │
                     └─────────────────┘
 
+---
+
 ## Workflow 3: Code Generation
 
                     Approved Task Plan
@@ -167,7 +172,7 @@ Each workflow is checkpointed using SQLite and supports Human-in-the-Loop (HITL)
                            │
                            ▼
                 ┌─────────────────────┐
-                │  Current Task       │
+                │   Current Task      │
                 │                     │
                 │ Read dependency     │
                 │ files + workspace   │
@@ -176,7 +181,7 @@ Each workflow is checkpointed using SQLite and supports Human-in-the-Loop (HITL)
                            │
                            ▼
                 ┌─────────────────────┐
-                │ Dynamic Task Graph  │
+                │  Dynamic Task Graph │
                 │ based on patterns   │
                 └──────────┬──────────┘
                            │
@@ -239,27 +244,26 @@ Each workflow is checkpointed using SQLite and supports Human-in-the-Loop (HITL)
              │ + MANIFEST.json  │
              └──────────────────┘
 
+---
 
 ## Quickstart Guide
 
 ### 1. Environment Setup
-```powershell
-cd C:/Users/venee/OneDrive/Desktop/HashedIn/agent_factory
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
+
+    cd C:/Users/venee/OneDrive/Desktop/HashedIn/agent_factory
+    python -m venv .venv
+    .\.venv\Scripts\Activate.ps1
+    pip install -r requirements.txt
 
 ### 2. Run Test Suite
-```powershell
-.\.venv\Scripts\pytest.exe -v
-```
+
+    .\.venv\Scripts\pytest.exe -v
 
 ### 3. Start Application Server
-```powershell
-.\.venv\Scripts\uvicorn.exe src.main:app --host 127.0.0.1 --port 8000 --reload
+
+    .\.venv\Scripts\uvicorn.exe src.main:app --host 127.0.0.1 --port 8000 --reload
+
+Interactive Swagger documentation is available at:
+
+**http://127.0.0.1:8000/docs**
 ```
-Interactive Swagger documentation is available at: **http://127.0.0.1:8000/docs**
-
----
-
