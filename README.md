@@ -3,8 +3,6 @@
 
 A production-grade, backend-only AI Agent Factory that ingests business and technical specifications (BRD / PRD / TRD in PDF, DOCX, PPTX, XLSX, MD, TXT) and autonomously drives three sequential agentic workflows to produce a working, pattern-aware codebase.
 
-Powered by an **Adaptive Multi-LLM Routing Engine** that decouples business logic from model providers and optimizes for zero-cost development while enabling target frontier backbones (GPT-5.4 / GPT-5.5) in production.
-
 ---
 
 ## Architecture Overview
